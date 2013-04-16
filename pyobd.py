@@ -25,8 +25,9 @@
 
 # import wxversion
 # wxversion.select("2.6")
+from Queue import Queue
 from debugEvent import *
-from obd2_codes import pcodes, ptest
+from obd2_codes import pcodes, ptest, ucodes
 from wx.lib.mixins.listctrl import ListCtrlAutoWidthMixin
 import ConfigParser # safe application configuration
 import obd_io # OBD2 funcs
@@ -38,7 +39,6 @@ import threading
 import time
 import webbrowser # open browser from python
 import wx
-
 
 
 
@@ -66,42 +66,42 @@ def EVT_RESULT(win, func, id):
 
 # event pro akutalizaci Trace tabu
 class ResultEvent(wx.PyEvent):
-   """Simple event to carry arbitrary result data."""
-   def __init__(self, data):
-       """Init Result Event."""
-       wx.PyEvent.__init__(self)
-       self.SetEventType(EVT_RESULT_ID)
-       self.data = data
+    """Simple event to carry arbitrary result data."""
+    def __init__(self, data):
+        """Init Result Event."""
+        wx.PyEvent.__init__(self)
+        self.SetEventType(EVT_RESULT_ID)
+        self.data = data
 
 # event pro aktualizaci DTC tabu
 EVT_DTC_ID = 1001
 class DTCEvent(wx.PyEvent):
-   """Simple event to carry arbitrary result data."""
-   def __init__(self, data):
-       """Init Result Event."""
-       wx.PyEvent.__init__(self)
-       self.SetEventType(EVT_DTC_ID)
-       self.data = data
+    """Simple event to carry arbitrary result data."""
+    def __init__(self, data):
+        """Init Result Event."""
+        wx.PyEvent.__init__(self)
+        self.SetEventType(EVT_DTC_ID)
+        self.data = data
 
 # event pro aktualizaci status tabu
 EVT_STATUS_ID = 1002
 class StatusEvent(wx.PyEvent):
-   """Simple event to carry arbitrary result data."""
-   def __init__(self, data):
-       """Init Result Event."""
-       wx.PyEvent.__init__(self)
-       self.SetEventType(EVT_STATUS_ID)
-       self.data = data
+    """Simple event to carry arbitrary result data."""
+    def __init__(self, data):
+        """Init Result Event."""
+        wx.PyEvent.__init__(self)
+        self.SetEventType(EVT_STATUS_ID)
+        self.data = data
 
 # event pro aktualizaci tests tabu
 EVT_TESTS_ID = 1003
 class TestEvent(wx.PyEvent):
-   """Simple event to carry arbitrary result data."""
-   def __init__(self, data):
-       """Init Result Event."""
-       wx.PyEvent.__init__(self)
-       self.SetEventType(EVT_TESTS_ID)
-       self.data = data
+    """Simple event to carry arbitrary result data."""
+    def __init__(self, data):
+        """Init Result Event."""
+        wx.PyEvent.__init__(self)
+        self.SetEventType(EVT_TESTS_ID)
+        self.data = data
 
 # defines notification event for debug tracewindow
 
@@ -112,16 +112,19 @@ class OBD_App(wx.App):
                      size=wx.DefaultSize, style=0):
             wx.ListCtrl.__init__(self, parent, id, pos, size, style)
             ListCtrlAutoWidthMixin.__init__(self)
+            
 
     class sensorProducer(threading.Thread):
         def __init__(self, _notify_window, portName, SERTIMEOUT, RECONNATTEMPTS, _nb):
-            from Queue import Queue
+            
             self.portName = portName
             self.RECONNATTEMPTS = RECONNATTEMPTS
             self.SERTIMEOUT = SERTIMEOUT
             self.port = None
             self._notify_window = _notify_window
             self._nb = _nb
+            self.active = []
+            self.supp = None
             threading.Thread.__init__ (self)
 
         def init_communication(self):
@@ -133,7 +136,7 @@ class OBD_App(wx.App):
             self.active = []
             self.supp = self.port.sensor(0)[1]  # read supported PIDS
 
-            self.active.append(1);  # PID 0 is always supported
+            self.active.append(1)  # PID 0 is always supported
 
             wx.PostEvent(self._notify_window, ResultEvent([0, 0, "X"]))
             wx.PostEvent(self._notify_window, DebugEvent([1, "Communication initialized..."]))
@@ -153,7 +156,7 @@ class OBD_App(wx.App):
             if self.port.State == 0:  # cant connect, exit thread
                 self.stop()
                 wx.PostEvent(self._notify_window, StatusEvent([666]))  # signal apl, that communication was disconnected
-                wx.PostEvent(self._notify_window, StatusEvent([0, 1, "Error cant connect..."]))
+                wx.PostEvent(self._notify_window, StatusEvent([0, 1, "Connection Failure"]))
                 return None
 
             wx.PostEvent(self._notify_window, StatusEvent([0, 1, "Connected"]))
@@ -168,7 +171,7 @@ class OBD_App(wx.App):
                 elif curstate == 1:  # show tests tab
                     res = self.port.get_tests_MIL()
                     for i in range(0, len(res)):
-                       wx.PostEvent(self._notify_window, TestEvent([i, 1, res[i]]))
+                        wx.PostEvent(self._notify_window, TestEvent([i, 1, res[i]]))
 
                 elif curstate == 2:  # show sensor tab
                     for i in range(3, len(self.active)):
@@ -178,28 +181,28 @@ class OBD_App(wx.App):
                         if self._notify_window.ThreadControl == 666:
                             break
                 elif curstate == 3:  # show DTC tab
-                  if self._notify_window.ThreadControl == 1:  # clear DTC
-                      self.port.clear_dtc()
-
-                      if self._notify_window.ThreadControl == 666:  # before reset ThreadControl we must check if main thread did not want us to finish
-                          break
-
-                      self._notify_window.ThreadControl = 0
-                      prevstate = -1  # to reread DTC
-                  if self._notify_window.ThreadControl == 2:  # reread DTC
-                      prevstate = -1
-
-                      if self._notify_window.ThreadControl == 666:
-                          break
-
-                      self._notify_window.ThreadControl = 0
-                  if prevstate != 3:
-                    wx.PostEvent(self._notify_window, DTCEvent(0))  # clear list
-                    DTCCodes = self.port.get_dtc()
-                    if len(DTCCodes) == 0:
-                      wx.PostEvent(self._notify_window, DTCEvent(["", "", "No DTC codes (codes cleared)"]))
-                    for i in range (0, len(DTCCodes)):
-                      wx.PostEvent(self._notify_window, DTCEvent([DTCCodes[i][1], DTCCodes[i][0], pcodes[DTCCodes[i][1]]]))
+                    if self._notify_window.ThreadControl == 1:  # clear DTC
+                        self.port.clear_dtc()
+                    
+                        if self._notify_window.ThreadControl == 666:  # before reset ThreadControl we must check if main thread did not want us to finish
+                            break
+                    
+                        self._notify_window.ThreadControl = 0
+                        prevstate = -1  # to reread DTC
+                    if self._notify_window.ThreadControl == 2:  # reread DTC
+                        prevstate = -1
+                    
+                        if self._notify_window.ThreadControl == 666:
+                            break
+                    
+                        self._notify_window.ThreadControl = 0
+                    if prevstate != 3:
+                        wx.PostEvent(self._notify_window, DTCEvent(0))  # clear list
+                        DTCCodes = self.port.get_dtc()
+                        if len(DTCCodes) == 0:
+                            wx.PostEvent(self._notify_window, DTCEvent(["", "", "No DTC codes (codes cleared)"]))
+                        for i in range (0, len(DTCCodes)):
+                            wx.PostEvent(self._notify_window, DTCEvent([DTCCodes[i][1], DTCCodes[i][0], pcodes[DTCCodes[i][1]]]))
                 else:
                     pass
             self.stop()
@@ -351,17 +354,17 @@ class OBD_App(wx.App):
         # print platform.mac_ver()[]
 
         if "OS" in os.environ.keys():  # runnig under windows
-          self.configfilepath = "pyobd.ini"
+            self.configfilepath = "pyobd.ini"
         else:
-          self.configfilepath = os.environ['HOME'] + '/.pyobdrc'
+            self.configfilepath = os.environ['HOME'] + '/.pyobdrc'
         if self.config.read(self.configfilepath) == []:
-          self.COMPORT = "/dev/ttyACM0"
-          self.RECONNATTEMPTS = 5
-          self.SERTIMEOUT = 2
+            self.COMPORT = "/dev/ttyACM0"
+            self.RECONNATTEMPTS = 5
+            self.SERTIMEOUT = 2
         else:
-          self.COMPORT = self.config.get("pyOBD", "COMPORT")
-          self.RECONNATTEMPTS = self.config.getint("pyOBD", "RECONNATTEMPTS")
-          self.SERTIMEOUT = self.config.getint("pyOBD", "SERTIMEOUT")
+            self.COMPORT = self.config.get("pyOBD", "COMPORT")
+            self.RECONNATTEMPTS = self.config.getint("pyOBD", "RECONNATTEMPTS")
+            self.SERTIMEOUT = self.config.getint("pyOBD", "SERTIMEOUT")
 
         frame = wx.Frame(None, -1, "pyOBD-II")
         self.frame = frame
@@ -378,10 +381,10 @@ class OBD_App(wx.App):
         self.status = self.MyListCtrl(self.nb, tID, style=wx.LC_REPORT | wx.SUNKEN_BORDER)
         self.status.InsertColumn(0, "Description", width=200)
         self.status.InsertColumn(1, "Value")
-        self.status.Append(["Link State", "Disconnnected"]);
-        self.status.Append(["Protocol", "---"]);
-        self.status.Append(["Cable version", "---"]);
-        self.status.Append(["COM port", self.COMPORT]);
+        self.status.Append(["Link State", "Disconnnected"])
+        self.status.Append(["Protocol", "---"])
+        self.status.Append(["Cable version", "---"])
+        self.status.Append(["COM port", self.COMPORT])
 
         self.nb.AddPage(self.status, "Status")
 
@@ -391,7 +394,7 @@ class OBD_App(wx.App):
         self.nb.AddPage(self.OBDTests, "Tests")
 
         for i in range(0, len(ptest)):  # fill MODE 1 PID 1 test description
-          self.OBDTests.Append([ptest[i], "---"]);
+            self.OBDTests.Append([ptest[i], "---"])
 
         self.build_sensor_page()
 
@@ -559,17 +562,16 @@ the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  0211
             leaf = tree.AppendItem(group_root, c)
             tree.AppendItem(leaf, pcodes[c])
 
-        #There are no U codes in obd2_codes, so I don't know what this is meant to be doing - Richard
-#        uroot = tree.AppendItem(root, "Network (U) Codes")
-#        codes = ucodes.keys()
-#        codes.sort()
-#        group = ""
-#        for c in codes:
-#            if c[:3] != group:
-#                group_root = tree.AppendItem(uroot, c[:3] + "XX")
-#                group = c[:3]
-#            leaf = tree.AppendItem(group_root, c)
-#            tree.AppendItem(leaf, ucodes[c])
+        uroot = tree.AppendItem(root, "Network (U) Codes")
+        codes = ucodes.keys()
+        codes.sort()
+        group = ""
+        for c in codes:
+            if c[:3] != group:
+                group_root = tree.AppendItem(uroot, c[:3] + "XX")
+                group = c[:3]
+            leaf = tree.AppendItem(group_root, c)
+            tree.AppendItem(leaf, ucodes[c])
 
         diag.SetSize((400, 500))
         diag.Show(True)
@@ -633,7 +635,7 @@ the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  0211
                 pass
 
         # ELM-USB shows up as /dev/tty.usbmodemXXX, where XXX is a changing hex string
-        # on connection; so we have to search through all 64K options
+        # on connection so we have to search through all 64K options
         if len(platform.mac_ver()[0]) != 0:  # search only on MAC
             for i in range (65535):
                 extension = hex(i).replace("0x", "", 1)
@@ -701,7 +703,7 @@ the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  0211
             # set and save SERTIMEOUT
             self.SERTIMEOUT = int(timeoutCtrl.GetValue())
             self.config.set("pyOBD", "SERTIMEOUT", self.SERTIMEOUT)
-            self.status.SetStringItem(3, 1, self.COMPORT);
+            self.status.SetStringItem(3, 1, self.COMPORT)
 
             # set and save RECONNATTEMPTS
             self.RECONNATTEMPTS = int(reconnectCtrl.GetValue())

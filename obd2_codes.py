@@ -1788,8 +1788,11 @@ pcodes = {
 	"P3494": "Cylinder 12 Exhaust Valve Control Performance",
 	"P3495": "Cylinder 12 Exhaust Valve Control Circuit Low",
 	"P3496": "Cylinder 12 Exhaust Valve Control Circuit High",
-	"P3497": "Cylinder Deactivation System",
-        "U0001" : "High Speed CAN Communication Bus" , 
+	"P3497": "Cylinder Deactivation System"
+	}
+
+ucodes = {
+	"U0001" : "High Speed CAN Communication Bus" , 
 	"U0002" : "High Speed CAN Communication Bus (Performance)" , 
 	"U0003" : "High Speed CAN Communication Bus (Open)" , 
 	"U0004" : "High Speed CAN Communication Bus (Low)" , 
