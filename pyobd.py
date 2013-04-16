@@ -164,19 +164,19 @@ class OBD_App(wx.App):
                 prevstate = curstate
                 curstate = self._nb.GetSelection()
                 if curstate == 0:  # show status tab
-                  pass
+                    pass
                 elif curstate == 1:  # show tests tab
-                  res = self.port.get_tests_MIL()
-                  for i in range(0, len(res)):
-                    wx.PostEvent(self._notify_window, TestEvent([i, 1, res[i]]))
+                    res = self.port.get_tests_MIL()
+                    for i in range(0, len(res)):
+                       wx.PostEvent(self._notify_window, TestEvent([i, 1, res[i]]))
 
                 elif curstate == 2:  # show sensor tab
-                  for i in range(3, len(self.active)):
-                      if self.active[i]:
-                          s = self.port.sensor(i)
-                          wx.PostEvent(self._notify_window, ResultEvent([i, 2, "%s (%s)" % (s[1], s[2])]))
-                      if self._notify_window.ThreadControl == 666:
-                          break
+                    for i in range(3, len(self.active)):
+                        if self.active[i]:
+                            s = self.port.sensor(i)
+                            wx.PostEvent(self._notify_window, ResultEvent([i, 2, "%s (%s)" % (s[1], s[2])]))
+                        if self._notify_window.ThreadControl == 666:
+                            break
                 elif curstate == 3:  # show DTC tab
                   if self._notify_window.ThreadControl == 1:  # clear DTC
                       self.port.clear_dtc()
@@ -201,26 +201,26 @@ class OBD_App(wx.App):
                     for i in range (0, len(DTCCodes)):
                       wx.PostEvent(self._notify_window, DTCEvent([DTCCodes[i][1], DTCCodes[i][0], pcodes[DTCCodes[i][1]]]))
                 else:
-                 pass
+                    pass
             self.stop()
 
-        def off(self, id):
-            if id >= 0 and id < len(self.active):
-                self.active[id] = 0
+        def off(self, sensor_id):
+            if sensor_id >= 0 and sensor_id < len(self.active):
+                self.active[sensor_id] = 0
             else:
                 print "Invalid sensor id"
-        def on(self, id):
-            if id >= 0 and id < len(self.active):
-                self.active[id] = 1
+        def on(self, sensor_id):
+            if sensor_id >= 0 and sensor_id < len(self.active):
+                self.active[sensor_id] = 1
             else:
                 print "Invalid sensor id"
 
         def all_off(self):
-            for i in range(0, len(self.active)):
-                self.off(i)
+            for sensor_id in range(0, len(self.active)):
+                self.off(sensor_id)
         def all_on(self):
-            for i in range(0, len(self.active)):
-                self.off(i)
+            for sensor_id in range(0, len(self.active)):
+                self.off(sensor_id)
 
         def stop(self):
             if self.port != None:  # if stop is called before any connection port is not defined (and not connected )

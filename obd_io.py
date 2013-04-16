@@ -86,8 +86,7 @@ class OBDPort:
         wx.PostEvent(self._notify_window, DebugEvent([1, "Opening interface (serial port)"]))
 
         try:
-            self.port = serial.Serial(portnum, baud, \
-            parity=par, stopbits=sb, bytesize=databits, timeout=to)
+            self.port = serial.Serial(portnum, baud, parity=par, stopbits=sb, bytesize=databits, timeout=to)
 
         except serial.SerialException as e:
             print e
@@ -169,12 +168,12 @@ class OBDPort:
                 if c == '\r' and len(output_buffer) > 0:
                     break
                 else:
-                    if output_buffer != "" or c != ">":  # if something is in buffer, add everything
-                        output_buffer = buffer + c
-            wx.PostEvent(self._notify_window, DebugEvent([3, "Get result:" + buffer]))
-            return buffer
+                    if output_buffer != "" or c != ">":  # if something is in output_buffer, add everything
+                        output_buffer = output_buffer + c
+            wx.PostEvent(self._notify_window, DebugEvent([3, "Get result:" + output_buffer]))
+            return output_buffer
         else:
-            wx.PostEvent(self._notify_window, DebugEvent([3, "NO self.port!" + buffer]))
+            wx.PostEvent(self._notify_window, DebugEvent([3, "NO self.port!" + output_buffer]))
         return None
 
     # get sensor value from command
