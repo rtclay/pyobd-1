@@ -22,7 +22,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 ###########################################################################
 
-from debugEvent import *
+
 from obd_sensors import hex_to_int
 import obd_sensors
 import serial
@@ -31,6 +31,7 @@ import time
 
 try:
     import wx # due to debugEvent messaging
+    from debugEvent import *
     graphics= True
 except ImportError, e:
     graphics= False
