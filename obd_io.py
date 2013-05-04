@@ -28,7 +28,12 @@ import obd_sensors
 import serial
 import string
 import time
-import wx # due to debugEvent messaging
+
+try:
+    import wx # due to debugEvent messaging
+    graphics= True
+except ImportError, e:
+    graphics= False
 
 
 
@@ -84,8 +89,9 @@ class OBDPort:
         self.ELMver = "Unknown"
         self.State = 0  # state SERIAL is 1 connected, 0 disconnected (connection failed)
 
-        self._notify_window = _notify_window
-        wx.PostEvent(self._notify_window, DebugEvent([1, "Opening interface (serial port)"]))
+        if graphics:
+            self._notify_window = _notify_window
+            wx.PostEvent(self._notify_window, DebugEvent([1, "Opening interface (serial port)"]))
 
         try:
             self.port = serial.Serial(portnum, baud, parity=par, stopbits=sb, bytesize=databits, timeout=to, interCharTimeout = 5)
@@ -96,8 +102,9 @@ class OBDPort:
             return None
         
         self.State = 1
-        wx.PostEvent(self._notify_window, DebugEvent([1, "Interface " + self.port.name + " successfully opened"]))
-        wx.PostEvent(self._notify_window, DebugEvent([1, "Connecting to ECU..."]))
+        if graphics:
+            wx.PostEvent(self._notify_window, DebugEvent([1, "Interface " + self.port.name + " successfully opened"]))
+            wx.PostEvent(self._notify_window, DebugEvent([1, "Connecting to ECU..."]))
 
         try:
             self.send_command("atz")  # initialize
@@ -117,12 +124,15 @@ class OBDPort:
         else:
             self.ELMver = self.get_result()
             
-            wx.PostEvent(self._notify_window, DebugEvent([2, "atz response:" + self.ELMver]))
+            if graphics:
+                wx.PostEvent(self._notify_window, DebugEvent([2, "atz response:" + self.ELMver]))
             self.send_command("ate0")  # echo off
-            wx.PostEvent(self._notify_window, DebugEvent([2, "ate0 response:" + self.get_result()]))
+            if graphics:
+                wx.PostEvent(self._notify_window, DebugEvent([2, "ate0 response:" + self.get_result()]))
             self.send_command("0100")
             ready = self.get_result()
-            wx.PostEvent(self._notify_window, DebugEvent([2, "0100 response:" + ready]))
+            if graphics:
+                wx.PostEvent(self._notify_window, DebugEvent([2, "0100 response:" + ready]))
             return None
 
     def close(self):
@@ -131,7 +141,8 @@ class OBDPort:
         try:
             self.send_command("atz")
             self.port.close()
-            wx.PostEvent(self._notify_window, DebugEvent([1, "Closed port: " + self.port.name]))
+            if graphics:
+                wx.PostEvent(self._notify_window, DebugEvent([1, "Closed port: " + self.port.name]))
         except serial.SerialException as e:
             print "trying to close port that does not exist"
 
@@ -146,7 +157,8 @@ class OBDPort:
             for c in cmd:
                 self.port.write(c)
             self.port.write("\r\n")
-            wx.PostEvent(self._notify_window, DebugEvent([3, "Sent command:" + cmd]))
+            if graphics:
+                wx.PostEvent(self._notify_window, DebugEvent([3, "Sent command:" + cmd]))
 
     def interpret_result(self, code):
         """Internal use only: not a public interface"""
@@ -177,7 +189,8 @@ class OBDPort:
 
     def get_result(self):
         """Internal use only: not a public interface"""
-        wx.PostEvent(self._notify_window, DebugEvent([3, "Waiting for response..."]))
+        if graphics:
+            wx.PostEvent(self._notify_window, DebugEvent([3, "Waiting for response..."]))
         if self.port.isOpen():
             # wait one half second before reading
             time.sleep(1.5)
@@ -192,13 +205,16 @@ class OBDPort:
                     output_buffer = output_buffer + c
             print output_buffer
             if output_buffer == "":
-                wx.PostEvent(self._notify_window, DebugEvent([3, "Did not detect response"]))
+                if graphics:
+                    wx.PostEvent(self._notify_window, DebugEvent([3, "Did not detect response"]))
                 return None
             else:
-                wx.PostEvent(self._notify_window, DebugEvent([3, "Got result:" + output_buffer]))
+                if graphics:
+                    wx.PostEvent(self._notify_window, DebugEvent([3, "Got result:" + output_buffer]))
                 return output_buffer
         else:
-            wx.PostEvent(self._notify_window, DebugEvent([3, "NO self.port!" + output_buffer]))
+            if graphics:
+                wx.PostEvent(self._notify_window, DebugEvent([3, "NO self.port!" + output_buffer]))
         return None
 
     # get sensor value from command
